@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"reflect"
 
 	yaml "gopkg.in/yaml.v3"
 )
@@ -28,6 +29,86 @@ type orderedMap struct {
 type orderedMapKV struct {
 	K string
 	V orderedMap
+}
+
+func (o *orderedMap) GetKey(key string) orderedMap {
+	for _, entry := range o.kv {
+		if entry.K == key {
+			return entry.V
+		}
+	}
+	return orderedMap{}
+}
+
+func (o *orderedMap) UnmarshalTOML(data interface{}) error {
+	log.Debugf("UnmarshalTOML: %v, %v", data, reflect.TypeOf(data))
+	switch data := data.(type) {
+	case float64, float32, int, int64, int32, string, bool, nil:
+		o.altVal = data
+	case map[string]interface{}:
+		o.kv = []orderedMapKV{}
+		for key, rawValue := range data {
+			log.Debugf("key: %v, rawV: %v", key, rawValue)
+			value := orderedMap{}
+			value.UnmarshalTOML(rawValue)
+			entry := orderedMapKV{K: key, V: value}
+			o.kv = append(o.kv, entry)
+		}
+	case []interface{}:
+		array := make([]*orderedMap, len(data))
+		for i, rawValue := range data {
+			value := orderedMap{}
+			value.UnmarshalTOML(rawValue)
+			array[i] = &value
+		}
+		o.altVal = array
+
+	}
+
+	return nil
+}
+
+func (o *orderedMap) convertToYamlNode() (*yaml.Node, error) {
+	if o.kv == nil {
+		switch rawData := o.altVal.(type) {
+		case nil:
+			return createScalarNode(nil, "null"), nil
+		case float64, float32:
+			// json decoder returns ints as float.
+			return parseSnippet(fmt.Sprintf("%v", rawData))
+		case int, int64, int32, string, bool:
+			return createScalarNode(rawData, fmt.Sprintf("%v", rawData)), nil
+		case []*orderedMap:
+			return o.convertArrayToYamlNode(rawData)
+		default:
+			return nil, fmt.Errorf("unrecognised type :( %v", rawData)
+		}
+	}
+
+	var yamlMap = &yaml.Node{Kind: yaml.MappingNode}
+	for _, keyValuePair := range o.kv {
+		yamlValue, err := keyValuePair.V.convertToYamlNode()
+		if err != nil {
+			return nil, err
+		}
+		yamlMap.Content = append(yamlMap.Content, createScalarNode(keyValuePair.K, keyValuePair.K), yamlValue)
+	}
+	return yamlMap, nil
+
+}
+
+func (o *orderedMap) convertArrayToYamlNode(dataArray []*orderedMap) (*yaml.Node, error) {
+
+	var yamlMap = &yaml.Node{Kind: yaml.SequenceNode}
+
+	for _, value := range dataArray {
+		yamlValue, err := value.convertToYamlNode()
+		if err != nil {
+			return nil, err
+		}
+		yamlMap.Content = append(yamlMap.Content, yamlValue)
+	}
+	return yamlMap, nil
 }
 
 func (o *orderedMap) UnmarshalJSON(data []byte) error {
