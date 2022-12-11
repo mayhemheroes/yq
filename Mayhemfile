@@ -1,0 +1,6 @@
+project: yq
+target: yq
+
+cmds:
+  - cmd: /yq @@
+    env: {}
