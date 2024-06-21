@@ -5,7 +5,7 @@ import (
 
 	"github.com/alecthomas/repr"
 	"github.com/mikefarah/yq/v4/test"
-	"gopkg.in/yaml.v3"
+	yaml "gopkg.in/yaml.v3"
 )
 
 type participleLexerScenario struct {
@@ -14,6 +14,127 @@ type participleLexerScenario struct {
 }
 
 var participleLexerScenarios = []participleLexerScenario{
+	{
+		expression: ".[:3]",
+		tokens: []*token{
+			{
+				TokenType: operationToken,
+				Operation: &Operation{
+					OperationType: selfReferenceOpType,
+					StringValue:   "SELF",
+				},
+			},
+			{
+				TokenType: operationToken,
+				Operation: &Operation{
+					OperationType: traverseArrayOpType,
+					StringValue:   "TRAVERSE_ARRAY",
+				},
+			},
+			{
+				TokenType: openCollect,
+			},
+			{
+				TokenType: operationToken,
+				Operation: &Operation{
+					OperationType: valueOpType,
+					Value:         0,
+					StringValue:   "0",
+					CandidateNode: &CandidateNode{
+						Node: &yaml.Node{
+							Kind:  yaml.ScalarNode,
+							Tag:   "!!int",
+							Value: "0",
+						},
+					},
+				},
+			},
+			{
+				TokenType: operationToken,
+				Operation: &Operation{
+					OperationType: createMapOpType,
+					Value:         "CREATE_MAP",
+					StringValue:   ":",
+				},
+			},
+			{
+				TokenType: operationToken,
+				Operation: &Operation{
+					OperationType: valueOpType,
+					Value:         3,
+					StringValue:   "3",
+					CandidateNode: &CandidateNode{
+						Node: &yaml.Node{
+							Kind:  yaml.Kind(8),
+							Tag:   "!!int",
+							Value: "3",
+						},
+					},
+				},
+			},
+			{
+				TokenType:            closeCollect,
+				CheckForPostTraverse: true,
+				Match:                "]",
+			},
+		},
+	},
+	{
+		expression: ".[-2:]",
+		tokens: []*token{
+			{
+				TokenType: operationToken,
+				Operation: &Operation{
+					OperationType: selfReferenceOpType,
+					StringValue:   "SELF",
+				},
+			},
+			{
+				TokenType: operationToken,
+				Operation: &Operation{
+					OperationType: traverseArrayOpType,
+					StringValue:   "TRAVERSE_ARRAY",
+				},
+			},
+			{
+				TokenType: openCollect,
+			},
+			{
+				TokenType: operationToken,
+				Operation: &Operation{
+					OperationType: valueOpType,
+					Value:         -2,
+					StringValue:   "-2",
+					CandidateNode: &CandidateNode{
+						Node: &yaml.Node{
+							Kind:  yaml.ScalarNode,
+							Tag:   "!!int",
+							Value: "-2",
+						},
+					},
+				},
+			},
+			{
+				TokenType: operationToken,
+				Operation: &Operation{
+					OperationType: createMapOpType,
+					Value:         "CREATE_MAP",
+					StringValue:   ":",
+				},
+			},
+			{
+				TokenType: operationToken,
+				Operation: &Operation{
+					OperationType: lengthOpType,
+				},
+			},
+			{
+				TokenType:            closeCollect,
+				CheckForPostTraverse: true,
+				Match:                "]",
+			},
+		},
+	},
 	{
 		expression: ".a",
 		tokens: []*token{
@@ -494,6 +615,27 @@ var participleLexerScenarios = []participleLexerScenario{
 					StringValue:   "@yamld",
 					Preferences: decoderPreferences{
 						format: YamlInputFormat,
+					},
+				},
+			},
+		},
+	},
+	{
+		expression: `"string with a\n"`,
+		tokens: []*token{
+			{
+				TokenType: operationToken,
+				Operation: &Operation{
+					OperationType: valueOpType,
+					Value:         "string with a\n",
+					StringValue:   "string with a\n",
+					Preferences:   nil,
+					CandidateNode: &CandidateNode{
+						Node: &yaml.Node{
+							Kind:  yaml.ScalarNode,
+							Tag:   "!!str",
+							Value: "string with a\n",
+						},
 					},
 				},
 			},

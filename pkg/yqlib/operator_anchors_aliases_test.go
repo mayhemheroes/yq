@@ -12,8 +12,7 @@ var specDocument = `- &CENTER { x: 1, y: 2 }
 
 var expectedSpecResult = "D0, P[4], (!!map)::x: 1\ny: 2\nr: 10\n"
 
-var simpleArrayRef = `
-item_value: &item_value
+var simpleArrayRef = `item_value: &item_value
   value: true
 
 thingOne:
@@ -36,6 +35,13 @@ thingTwo:
 `
 
 var anchorOperatorScenarios = []expressionScenario{
+	{
+		skipDoc:       true,
+		description:   "merge anchor not map",
+		document:      "a: &a\n  - 0\nc:\n  <<: [*a]\n",
+		expectedError: "merge anchor only supports maps, got !!seq instead",
+		expression:    "explode(.)",
+	},
 	{
 		description:    "Merge one map",
 		subdescription: "see https://yaml.org/type/merge.html",

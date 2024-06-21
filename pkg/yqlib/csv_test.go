@@ -12,7 +12,9 @@ const csvSimple = `name,numberOfCats,likesApples,height
 Gary,1,true,168.8
 Samantha's Rabbit,2,false,-188.8
 `
-
+const csvMissing = `name,numberOfCats,likesApples,height
+,null,,168.8
+`
 const expectedUpdatedSimpleCsv = `name,numberOfCats,likesApples,height
 Gary,3,true,168.8
 Samantha's Rabbit,2,false,-188.8
@@ -111,6 +113,13 @@ var csvScenarios = []formatScenario{
 		scenarioType:   "encode-csv",
 	},
 	{
+		description:  "decode csv missing",
+		skipDoc:      true,
+		input:        csvMissing,
+		expected:     csvMissing,
+		scenarioType: "roundtrip-csv",
+	},
+	{
 		description:    "Parse CSV into an array of objects",
 		subdescription: "First row is assumed to be the header row.",
 		input:          csvSimple,
@@ -136,15 +145,15 @@ var csvScenarios = []formatScenario{
 func testCSVScenario(t *testing.T, s formatScenario) {
 	switch s.scenarioType {
 	case "encode-csv":
-		test.AssertResultWithContext(t, s.expected, processFormatScenario(s, NewYamlDecoder(), NewCsvEncoder(',')), s.description)
+		test.AssertResultWithContext(t, s.expected, mustProcessFormatScenario(s, NewYamlDecoder(ConfiguredYamlPreferences), NewCsvEncoder(',')), s.description)
 	case "encode-tsv":
-		test.AssertResultWithContext(t, s.expected, processFormatScenario(s, NewYamlDecoder(), NewCsvEncoder('\t')), s.description)
+		test.AssertResultWithContext(t, s.expected, mustProcessFormatScenario(s, NewYamlDecoder(ConfiguredYamlPreferences), NewCsvEncoder('\t')), s.description)
 	case "decode-csv-object":
-		test.AssertResultWithContext(t, s.expected, processFormatScenario(s, NewCSVObjectDecoder(','), NewYamlEncoder(2, false, true, true)), s.description)
+		test.AssertResultWithContext(t, s.expected, mustProcessFormatScenario(s, NewCSVObjectDecoder(','), NewYamlEncoder(2, false, ConfiguredYamlPreferences)), s.description)
 	case "decode-tsv-object":
-		test.AssertResultWithContext(t, s.expected, processFormatScenario(s, NewCSVObjectDecoder('\t'), NewYamlEncoder(2, false, true, true)), s.description)
+		test.AssertResultWithContext(t, s.expected, mustProcessFormatScenario(s, NewCSVObjectDecoder('\t'), NewYamlEncoder(2, false, ConfiguredYamlPreferences)), s.description)
 	case "roundtrip-csv":
-		test.AssertResultWithContext(t, s.expected, processFormatScenario(s, NewCSVObjectDecoder(','), NewCsvEncoder(',')), s.description)
+		test.AssertResultWithContext(t, s.expected, mustProcessFormatScenario(s, NewCSVObjectDecoder(','), NewCsvEncoder(',')), s.description)
 	default:
 		panic(fmt.Sprintf("unhandled scenario type %q", s.scenarioType))
 	}
@@ -171,7 +180,7 @@ func documentCSVDecodeObjectScenario(w *bufio.Writer, s formatScenario, formatTy
 	}
 
 	writeOrPanic(w, fmt.Sprintf("```yaml\n%v```\n\n",
-		processFormatScenario(s, NewCSVObjectDecoder(separator), NewYamlEncoder(s.indent, false, true, true))),
+		mustProcessFormatScenario(s, NewCSVObjectDecoder(separator), NewYamlEncoder(s.indent, false, ConfiguredYamlPreferences))),
 	)
 }
 
@@ -203,7 +212,7 @@ func documentCSVEncodeScenario(w *bufio.Writer, s formatScenario, formatType str
 	}
 
 	writeOrPanic(w, fmt.Sprintf("```%v\n%v```\n\n", formatType,
-		processFormatScenario(s, NewYamlDecoder(), NewCsvEncoder(separator))),
+		mustProcessFormatScenario(s, NewYamlDecoder(ConfiguredYamlPreferences), NewCsvEncoder(separator))),
 	)
 }
 
@@ -235,7 +244,7 @@ func documentCSVRoundTripScenario(w *bufio.Writer, s formatScenario, formatType 
 	}
 
 	writeOrPanic(w, fmt.Sprintf("```%v\n%v```\n\n", formatType,
-		processFormatScenario(s, NewCSVObjectDecoder(separator), NewCsvEncoder(separator))),
+		mustProcessFormatScenario(s, NewCSVObjectDecoder(separator), NewCsvEncoder(separator))),
 	)
 }
 

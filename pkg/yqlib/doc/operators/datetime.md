@@ -25,12 +25,6 @@ Durations are parsed using golangs built in [ParseDuration](https://pkg.go.dev/t
 
 You can durations to time using the `+` operator.
 
-{% hint style="warning" %}
-Note that versions prior to 4.18 require the 'eval/e' command to be specified.&#x20;
-
-`yq e <exp> <file>`
-{% endhint %}
-
 ## Format: from standard RFC3339 format
 Providing a single parameter assumes a standard RFC3339 datetime format. If the target format is not a valid yaml datetime format, the result will be a string tagged node.
 
@@ -66,7 +60,7 @@ a: 2001-12-15
 ## Format: get the day of the week
 Given a sample.yml file of:
 ```yaml
-a: 2001-12-15T02:59:43.1Z
+a: 2001-12-15
 ```
 then
 ```bash

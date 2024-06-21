@@ -7,12 +7,6 @@ You can get the key/index of matching nodes by using the `path` operator to retu
 Use `setpath` to set a value to the path array returned by `path`, and similarly `delpaths` for an array of path arrays.
 
 
-{% hint style="warning" %}
-Note that versions prior to 4.18 require the 'eval/e' command to be specified.&#x20;
-
-`yq e <exp> <file>`
-{% endhint %}
-
 ## Map path
 Given a sample.yml file of:
 ```yaml
@@ -126,6 +120,33 @@ will output
 ```yaml
 a:
   b: things
+```
+
+## Set path to prune deep paths
+Like pick but recursive. This uses `ireduce` to deeply set the selected paths into an empty object,
+
+Given a sample.yml file of:
+```yaml
+
+parentA: bob
+parentB:
+  child1: i am child1
+  child2: i am child2
+parentC:
+  child1: me child1
+  child2: me child2
+```
+then
+```bash
+yq '(.parentB.child2, .parentC.child1) as $i
+  ireduce({}; setpath($i | path; $i))' sample.yml
+```
+will output
+```yaml
+parentB:
+  child2: i am child2
+parentC:
+  child1: me child1
 ```
 
 ## Set array path

@@ -79,10 +79,25 @@ const roundTripMultiLineJson = `{
 
 var jsonScenarios = []formatScenario{
 	{
+		description:  "set tags",
+		skipDoc:      true,
+		input:        "[{}]",
+		expression:   `[.. | type]`,
+		scenarioType: "roundtrip-ndjson",
+		expected:     "[\"!!seq\",\"!!map\"]\n",
+	},
+	{
 		description:    "Parse json: simple",
 		subdescription: "JSON is a subset of yaml, so all you need to do is prettify the output",
 		input:          `{"cat": "meow"}`,
 		expected:       "D0, P[], (!!map)::cat: meow\n",
+	},
+	{
+		description:   "bad json",
+		skipDoc:       true,
+		input:         `{"a": 1 "b": 2}`,
+		expectedError: `bad file 'sample.yml': invalid character '"' after object key:value pair`,
+		scenarioType:  "decode-error",
 	},
 	{
 		description:    "Parse json: complex",
@@ -237,7 +252,7 @@ func documentRoundtripNdJsonScenario(w *bufio.Writer, s formatScenario, indent i
 
 	writeOrPanic(w, "will output\n")
 
-	writeOrPanic(w, fmt.Sprintf("```yaml\n%v```\n\n", processFormatScenario(s, NewJSONDecoder(), NewJSONEncoder(indent, false))))
+	writeOrPanic(w, fmt.Sprintf("```yaml\n%v```\n\n", mustProcessFormatScenario(s, NewJSONDecoder(), NewJSONEncoder(indent, false, false))))
 }
 
 func documentDecodeNdJsonScenario(w *bufio.Writer, s formatScenario) {
@@ -262,11 +277,11 @@ func documentDecodeNdJsonScenario(w *bufio.Writer, s formatScenario) {
 
 	writeOrPanic(w, "will output\n")
 
-	writeOrPanic(w, fmt.Sprintf("```yaml\n%v```\n\n", processFormatScenario(s, NewJSONDecoder(), NewYamlEncoder(s.indent, false, true, true))))
+	writeOrPanic(w, fmt.Sprintf("```yaml\n%v```\n\n", mustProcessFormatScenario(s, NewJSONDecoder(), NewYamlEncoder(s.indent, false, ConfiguredYamlPreferences))))
 }
 
 func decodeJSON(t *testing.T, jsonString string) *CandidateNode {
-	docs, err := readDocumentWithLeadingContent(jsonString, "sample.json", 0)
+	docs, err := readDocument(jsonString, "sample.json", 0)
 
 	if err != nil {
 		t.Error(err)
@@ -293,17 +308,23 @@ func decodeJSON(t *testing.T, jsonString string) *CandidateNode {
 func testJSONScenario(t *testing.T, s formatScenario) {
 	switch s.scenarioType {
 	case "encode", "decode":
-		test.AssertResultWithContext(t, s.expected, processFormatScenario(s, NewYamlDecoder(), NewJSONEncoder(s.indent, false)), s.description)
+		test.AssertResultWithContext(t, s.expected, mustProcessFormatScenario(s, NewYamlDecoder(ConfiguredYamlPreferences), NewJSONEncoder(s.indent, false, false)), s.description)
 	case "":
 		var actual = resultToString(t, decodeJSON(t, s.input))
 		test.AssertResultWithContext(t, s.expected, actual, s.description)
 	case "decode-ndjson":
-		test.AssertResultWithContext(t, s.expected, processFormatScenario(s, NewJSONDecoder(), NewYamlEncoder(2, false, true, true)), s.description)
+		test.AssertResultWithContext(t, s.expected, mustProcessFormatScenario(s, NewJSONDecoder(), NewYamlEncoder(2, false, ConfiguredYamlPreferences)), s.description)
 	case "roundtrip-ndjson":
-		test.AssertResultWithContext(t, s.expected, processFormatScenario(s, NewJSONDecoder(), NewJSONEncoder(0, false)), s.description)
+		test.AssertResultWithContext(t, s.expected, mustProcessFormatScenario(s, NewJSONDecoder(), NewJSONEncoder(0, false, false)), s.description)
 	case "roundtrip-multi":
-		test.AssertResultWithContext(t, s.expected, processFormatScenario(s, NewJSONDecoder(), NewJSONEncoder(2, false)), s.description)
-
+		test.AssertResultWithContext(t, s.expected, mustProcessFormatScenario(s, NewJSONDecoder(), NewJSONEncoder(2, false, false)), s.description)
+	case "decode-error":
+		result, err := processFormatScenario(s, NewJSONDecoder(), NewJSONEncoder(2, false, false))
+		if err == nil {
+			t.Errorf("Expected error '%v' but it worked: %v", s.expectedError, result)
+		} else {
+			test.AssertResultComplexWithContext(t, s.expectedError, err.Error(), s.description)
+		}
 	default:
 		panic(fmt.Sprintf("unhandled scenario type %q", s.scenarioType))
 	}
@@ -385,7 +406,7 @@ func documentJSONEncodeScenario(w *bufio.Writer, s formatScenario) {
 	}
 	writeOrPanic(w, "will output\n")
 
-	writeOrPanic(w, fmt.Sprintf("```json\n%v```\n\n", processFormatScenario(s, NewYamlDecoder(), NewJSONEncoder(s.indent, false))))
+	writeOrPanic(w, fmt.Sprintf("```json\n%v```\n\n", mustProcessFormatScenario(s, NewYamlDecoder(ConfiguredYamlPreferences), NewJSONEncoder(s.indent, false, false))))
 }
 
 func TestJSONScenarios(t *testing.T) {
